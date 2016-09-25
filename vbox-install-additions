@@ -1,0 +1,19 @@
+#!/bin/bash
+
+NAME="$1"
+VBOXADDITIONS="$2"
+
+VBOX="/usr/bin/VBoxManage"
+
+if [ $# -ne 2 ]; then
+  echo "Usage: $0 <vm name> <vboxadditions iso>"
+  exit
+fi
+
+$VBOX storageattach "$NAME" \
+--storagectl ide \
+--type dvddrive \
+--medium "$VBOXADDITIONS" \
+--port 0 \
+--device 1 || echo "Failed to attach VBoxAdditions"
+

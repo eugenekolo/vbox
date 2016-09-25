@@ -1,0 +1,9 @@
+#!/bin/bash
+if [ -z "$1" ]
+  then
+    echo "You must pass the VM name as the 1st argument"
+fi
+
+NAME="$1"
+
+vboxmanage modifyvm "$NAME" --vrde off

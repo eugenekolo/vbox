@@ -1,0 +1,156 @@
+#!/bin/bash
+# vbox - A VirtualBox utilities wrapper
+# Tired of using that clunky vboxmanage.
+#
+# Usage: `vbox help`
+#
+# Eugene Kolo | eugene@eugenekolo.com | 2016
+
+function usage()
+{
+    cat <<END
+Usage: $(basename $0) (on|off|restore|restore-clean|snapshot|vrde [off|on]|help)
+
+
+Commands:
+    on              Turn on a VM. 
+                    <VM name>
+
+    off             Turn off a VM.
+                    <VM name>
+
+    list            List VMs.
+                    <VM name>
+
+    restore         Restore a VM to a snapshot.
+                    <VM name> <snapshot name>
+
+    restore-clean   Restores a VM to snapshot, "clean". 
+                    Note that the snapshot "clean" must exist.
+                    <VM name>
+    
+    snapshot        Take a snapshot of the VM.
+                    <VM name> <snapshot name>
+
+    vrde            Turn virtual desktop on/off at localhost:5051.
+                    Port forward to access it outside.
+                    <on|off> <VM name>
+
+    additions       Install VBox Additions.
+                    <VM name> <Additions ISO location>
+
+    help            Print this menu.
+END
+}
+
+function vbox_on()
+{
+    VMNAME="$1"
+    vboxmanage startvm "$VMNAME"
+}
+
+function vbox_off()
+{
+    VMNAME="$1"
+    vboxmanage controlvm "$VMNAME" poweroff
+}
+
+function vbox_list()
+{
+    echo "All VMs available:"
+    vboxmanage list vms
+    echo "VMs currently running:"
+    vboxmanage list runningvms
+
+}
+
+function vbox_restore()
+{
+    VMNAME="$1"
+    SNAPSHOT="$2"
+    vboxmanage controlvm "$VMNAME" poweroff || echo "Didn't power off VM, it's probably off already"
+    vboxmanage snapshot "$VMNAME" restore "$SNAPSHOT" || echo "Failed to restore snapshot"
+}
+
+function vbox_snapshot()
+{
+    VMNAME="$1"
+    SNAPSHOT="$2"
+    vboxmanage controlvm "$VMNAME" pause || echo "Failed to pause"
+    vboxmanage snapshot "$VMNAME" take "$SNAPSHOT" || echo "Failed to take snapshot"
+    vboxmanage controlvm "$VMNAME" resume || echo "Failed to resume"
+}
+
+function vbox_vrde()
+{
+    ON_OR_OFF="$1"
+    VMNAME="$2"
+    
+    case $ON_OR_OFF in
+        on)
+            vboxmanage controlvm "$VMNAME" poweroff
+            vboxmanage modifyvm "$VMNAME" --vrde on --vrdeport 5051 --vrdeaddress 127.0.0.1
+            echo "Turned VRDE, localhost:5051"
+            ;;
+        off)
+            vboxmanage controlvm "$VMNAME" poweroff
+            vboxmanage modifyvm "$VMNAME" --vrde off
+            echo "Turned VRDE off"
+            ;;
+        *)
+            echo "Must specify either to turn 'on' VRDE, or 'off'"
+            ;;
+    esac
+}
+
+function vbox_additions()
+{
+    VMNAME="$1"
+    ADDITIONS="$2"
+
+    vboxmanage storageattach "$VMNAME" \
+    --storagectl ide \
+    --type dvddrive
+    --medium "$ADDITIONS"
+    --port 0
+    --device 1 || echo "Failed to install Vbox Additions"
+}
+
+function main()
+{
+    ACTION=$1
+    case $ACTION in
+       on)
+            vbox_on "$2"
+            ;;
+        off)
+            vbox_off "$2"
+            ;;
+        list)
+            vbox_list
+            ;;
+        restore)
+            vbox_restore "$2" "$3"
+            ;;
+        restore-clean)
+            vbox_restore "$2" "clean"
+            ;;
+        snapshot)
+            vbox_snapshot "$2" "$3"
+            ;;
+        vrde)
+            vbox_vrde "$2" "$3"
+            ;;
+        additions)
+            vbox_additions "$2" "$3"
+            ;;
+        help)
+            usage
+            ;;
+        *)
+            usage
+            ;;
+    esac
+}
+
+main "$@"
